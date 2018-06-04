@@ -237,14 +237,15 @@ class BraintreeAdapter
      */
     protected function getStoreIdByOrderId()
     {
-        $defaultStoreId = $this->storeManager->getDefaultStoreView()->getId();
+        $currentStoreId = $this->storeManager->getStore()->getId();
         $dataParams = $this->request->getParams();
-        $order = $this->orderRepository->get($dataParams['order_id']);
-
-        if ($order->getEntityId()) {
-            return $order->getStoreId();
+        if (isset($dataParams['order_id'])) {
+            $order = $this->orderRepository->get($dataParams['order_id']);
+            if ($order->getEntityId()) {
+                return $order->getStoreId();
+            }
         }
 
-        return $defaultStoreId;
+        return $currentStoreId;
     }
 }
