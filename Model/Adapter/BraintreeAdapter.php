@@ -12,6 +12,10 @@ use Braintree\PaymentMethodNonce;
 use Braintree\Transaction;
 use Magento\Braintree\Gateway\Config\Config;
 use Magento\Braintree\Model\Adminhtml\Source\Environment;
+use Magento\Store\Model\StoreManagerInterface;
+use Magento\Framework\App\Request\Http as RequestHttp;
+use Magento\Sales\Model\OrderRepository;
+use Magento\Setup\Exception;
 
 /**
  * Class BraintreeAdapter
@@ -19,18 +23,47 @@ use Magento\Braintree\Model\Adminhtml\Source\Environment;
  */
 class BraintreeAdapter
 {
-
     /**
      * @var Config
      */
     private $config;
 
     /**
-     * @param Config $config
+     * @var StoreManagerInterface
      */
-    public function __construct(Config $config)
-    {
+    private $storeManager;
+
+    /**
+     * @var RequestHttp
+     */
+    private $request;
+
+    /**
+     * @var OrderRepository
+     */
+    private $orderRepository;
+
+    /**
+     * BraintreeAdapter constructor.
+     *
+     * @param Config                $config          Braintree Configurator
+     * @param StoreManagerInterface $storeManager    StoreManager
+     * @param RequestHttp           $request         Http Request
+     * @param OrderRepository       $orderRepository OrderRepository
+     *
+     * @throws \Magento\Framework\Exception\InputException
+     * @throws \Magento\Framework\Exception\NoSuchEntityException
+     */
+    public function __construct(
+        Config $config,
+        StoreManagerInterface $storeManager,
+        RequestHttp $request,
+        OrderRepository $orderRepository
+    ) {
         $this->config = $config;
+        $this->orderRepository = $orderRepository;
+        $this->storeManager = $storeManager;
+        $this->request = $request;
         $this->initCredentials();
     }
 
@@ -38,17 +71,31 @@ class BraintreeAdapter
      * Initializes credentials.
      *
      * @return void
+     *
+     * @throws \Magento\Framework\Exception\InputException
+     * @throws \Magento\Framework\Exception\NoSuchEntityException
      */
     protected function initCredentials()
     {
-        if ($this->config->getValue(Config::KEY_ENVIRONMENT) == Environment::ENVIRONMENT_PRODUCTION) {
+        $storeId = $this->getStoreIdByOrderId();
+        $environmentIdentifier = $this->config
+            ->getValue(Config::KEY_ENVIRONMENT, $storeId);
+
+        $this->environment(Environment::ENVIRONMENT_SANDBOX);
+
+        if ($environmentIdentifier == Environment::ENVIRONMENT_PRODUCTION) {
             $this->environment(Environment::ENVIRONMENT_PRODUCTION);
-        } else {
-            $this->environment(Environment::ENVIRONMENT_SANDBOX);
         }
-        $this->merchantId($this->config->getValue(Config::KEY_MERCHANT_ID));
-        $this->publicKey($this->config->getValue(Config::KEY_PUBLIC_KEY));
-        $this->privateKey($this->config->getValue(Config::KEY_PRIVATE_KEY));
+
+        $this->merchantId(
+            $this->config->getValue(Config::KEY_MERCHANT_ID, $storeId)
+        );
+        $this->publicKey(
+            $this->config->getValue(Config::KEY_PUBLIC_KEY, $storeId)
+        );
+        $this->privateKey(
+            $this->config->getValue(Config::KEY_PRIVATE_KEY, $storeId)
+        );
     }
 
     /**
@@ -179,5 +226,25 @@ class BraintreeAdapter
     public function cloneTransaction($transactionId, array $attributes)
     {
         return Transaction::cloneTransaction($transactionId, $attributes);
+    }
+
+    /**
+     * Get store id by order id
+     *
+     * @return int
+     * @throws \Magento\Framework\Exception\InputException
+     * @throws \Magento\Framework\Exception\NoSuchEntityException
+     */
+    protected function getStoreIdByOrderId()
+    {
+        $defaultStoreId = $this->storeManager->getDefaultStoreView()->getId();
+        $dataParams = $this->request->getParams();
+        $order = $this->orderRepository->get($dataParams['order_id']);
+
+        if ($order->getEntityId()) {
+            return $order->getStoreId();
+        }
+
+        return $defaultStoreId;
     }
 }
