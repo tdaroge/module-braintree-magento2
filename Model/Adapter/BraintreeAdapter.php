@@ -12,10 +12,7 @@ use Braintree\PaymentMethodNonce;
 use Braintree\Transaction;
 use Magento\Braintree\Gateway\Config\Config;
 use Magento\Braintree\Model\Adminhtml\Source\Environment;
-use Magento\Store\Model\StoreManagerInterface;
-use Magento\Framework\App\Request\Http as RequestHttp;
-use Magento\Sales\Model\OrderRepository;
-use Magento\Setup\Exception;
+use Magento\Braintree\Model\StoreConfigResolver;
 
 /**
  * Class BraintreeAdapter
@@ -29,41 +26,25 @@ class BraintreeAdapter
     private $config;
 
     /**
-     * @var StoreManagerInterface
+     * @var StoreConfigResolver
      */
-    private $storeManager;
-
-    /**
-     * @var RequestHttp
-     */
-    private $request;
-
-    /**
-     * @var OrderRepository
-     */
-    private $orderRepository;
+    private $storeConfigResolver;
 
     /**
      * BraintreeAdapter constructor.
      *
-     * @param Config                $config          Braintree Configurator
-     * @param StoreManagerInterface $storeManager    StoreManager
-     * @param RequestHttp           $request         Http Request
-     * @param OrderRepository       $orderRepository OrderRepository
+     * @param Config              $config              Braintree configurator
+     * @param StoreConfigResolver $storeConfigResolver StoreId resolver model
      *
      * @throws \Magento\Framework\Exception\InputException
      * @throws \Magento\Framework\Exception\NoSuchEntityException
      */
     public function __construct(
         Config $config,
-        StoreManagerInterface $storeManager,
-        RequestHttp $request,
-        OrderRepository $orderRepository
+        StoreConfigResolver $storeConfigResolver
     ) {
         $this->config = $config;
-        $this->orderRepository = $orderRepository;
-        $this->storeManager = $storeManager;
-        $this->request = $request;
+        $this->storeConfigResolver = $storeConfigResolver;
         $this->initCredentials();
     }
 
@@ -77,7 +58,7 @@ class BraintreeAdapter
      */
     protected function initCredentials()
     {
-        $storeId = $this->getStoreIdByOrderId();
+        $storeId = $this->storeConfigResolver->getStoreId();
         $environmentIdentifier = $this->config
             ->getValue(Config::KEY_ENVIRONMENT, $storeId);
 
@@ -226,26 +207,5 @@ class BraintreeAdapter
     public function cloneTransaction($transactionId, array $attributes)
     {
         return Transaction::cloneTransaction($transactionId, $attributes);
-    }
-
-    /**
-     * Get store id by order id
-     *
-     * @return int
-     * @throws \Magento\Framework\Exception\InputException
-     * @throws \Magento\Framework\Exception\NoSuchEntityException
-     */
-    protected function getStoreIdByOrderId()
-    {
-        $currentStoreId = $this->storeManager->getStore()->getId();
-        $dataParams = $this->request->getParams();
-        if (isset($dataParams['order_id'])) {
-            $order = $this->orderRepository->get($dataParams['order_id']);
-            if ($order->getEntityId()) {
-                return $order->getStoreId();
-            }
-        }
-
-        return $currentStoreId;
     }
 }
