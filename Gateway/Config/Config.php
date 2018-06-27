@@ -55,13 +55,12 @@ class Config extends \Magento\Payment\Gateway\Config\Config
     private $storeConfigResolver;
 
     /**
-     * Braintree config constructor
-     *
+     * Config constructor.
+     * @param StoreConfigResolver $storeConfigResolver
      * @param ScopeConfigInterface $scopeConfig
-     * @param null|string $methodCode
+     * @param null $methodCode
      * @param string $pathPattern
      * @param Json|null $serializer
-     * @param StoreConfigResolver $storeConfigResolver
      */
     public function __construct(
         StoreConfigResolver $storeConfigResolver,
