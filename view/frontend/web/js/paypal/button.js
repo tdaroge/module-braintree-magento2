@@ -177,8 +177,8 @@ define(
                                             email: payload.details.email,
                                             firstname: payload.details.firstName,
                                             lastname: payload.details.lastName,
-                                            telephone: typeof address.phone !== 'undefined' ? address.phone : '',
-                                            region: typeof address.region !== 'undefined' ? address.region : ''
+                                            telephone: typeof payload.details.phone !== 'undefined' ? payload.details.phone : '',
+                                            region: typeof address.state !== 'undefined' ? address.state : ''
                                         };
 
                                         formBuilder.build(
