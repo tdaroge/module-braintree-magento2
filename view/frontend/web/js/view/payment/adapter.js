@@ -283,6 +283,9 @@ define([
                     }
                 }, '#' + this.config.buttonId).then(function () {
                     this.enableButton();
+                    if (typeof this.config.onPaymentMethodError === 'function') {
+                        this.config.onPaymentMethodError();
+                    }
                 }.bind(this));
             }.bind(this));
         },
